@@ -12,6 +12,10 @@ Copyright (C) Microsoft Corporation. All rights reserved.
 ***********************************************************************************************
 -->
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <WebPublishTasksDir Condition=" '$(WebPublishTasksDir)'=='' ">$(MSBuildThisFileDirectory)</WebPublishTasksDir>
+  </PropertyGroup>
+  
   <UsingTask TaskName="GetProjectProperties" AssemblyFile="Microsoft.Web.Publishing.Tasks.dll"/>
   <UsingTask TaskName="TransformXml" AssemblyFile="Microsoft.Web.Publishing.Tasks.dll"/>
   <UsingTask TaskName="ParameterizeTransformXml" AssemblyFile="Microsoft.Web.Publishing.Tasks.dll"/>
@@ -49,6 +53,11 @@ Copyright (C) Microsoft Corporation. All rights reserved.
   <UsingTask TaskName="PublishNuGetPackage" AssemblyFile="Microsoft.Web.Publishing.Tasks.dll"/>
   <UsingTask TaskName="CreateAppHostXDTFile" AssemblyFile="Microsoft.Web.Publishing.Tasks.dll"/>
   <UsingTask TaskName="VerifyAzureNet46Support" AssemblyFile="Microsoft.Web.Publishing.Tasks.dll"/>
+  <UsingTask TaskName="PublishTelemetry" AssemblyFile="Microsoft.Web.Publishing.Tasks.dll" />
+  
+  <!-- These tasks are used by CustomPublish target-->
+  <UsingTask TaskName="GetAllPublishProperties" AssemblyFile="$(WebPublishTasksDir)Microsoft.Web.Publishing.Tasks.dll"/>
+  <UsingTask TaskName="InvokePowerShell" AssemblyFile="$(WebPublishTasksDir)Microsoft.Web.Publishing.Tasks.dll"/>
 
   <!-- The build process can be extended in a similar way as MS.Common.targets -->
   <PropertyGroup>
@@ -1549,6 +1558,16 @@ Copyright (C) Microsoft Corporation. All rights reserved.
       <FilesForPackagingFromProject Include="@(WebConfigsToTransform->'%(TransformOutputFile)')" Condition="'@(WebConfigsToTransform)'!='' And !%(WebConfigsToTransform.Exclude) And Exists(%(WebConfigsToTransform.TransformOutputFile))"/>
     </ItemGroup>
 
+    <PropertyGroup>
+      <IgnoreProjectGuid Condition="'$(IgnoreProjectGuid)' != 'true'">false</IgnoreProjectGuid>
+    </PropertyGroup>
+    
+    <PublishTelemetry
+      IgnoreProjectGuid="$(IgnoreProjectGuid)"
+      WebConfigFilePath="%(WebConfigsToTransform.TransformOutputFile)"
+      ProjectRootPath="$(WebPublishPipelineSourceRootDirectory)"
+      ProjectGuid="$(ProjectGuid)" />
+    
     <GetPublishingLocalizedString
        Importance="High"
        Condition="'@(WebConfigsToTransform)'!='' And !%(WebConfigsToTransform.Exclude) And Exists(%(WebConfigsToTransform.TransformOutputFile))"
@@ -4774,25 +4793,33 @@ Copyright (C) Microsoft Corporation. All rights reserved.
   <!--Custom Publish-->
   <!--***********************************************************************-->
 
-  <Target Name="CustomPublish" >
-    <!-- MicroservicePublish-->
-    <CallTarget Targets="$(PublishTarget)" Condition=" '$(PublishTarget)' != ''"/>
-  
-  </Target>
-
-  <Target Name="Microservice">
+  <Target Name="CustomPublish" DependsOnTargets="GatherAllFilesToPublish">
     <PropertyGroup>
-    <MicroserviceRootFolder Condition="'$(MicroserviceRootFolder)' == '' ">$(WebPublishPipelineProjectDirectory)\apiapp.json</MicroserviceRootFolder>
+      <PowerShellScriptFile Condition= "'$(PowerShellScriptFile)'=='' ">$([System.String]::Copy('$(WebPublishProfileFile)').Replace('.pubxml','-publish.ps1'))</PowerShellScriptFile>
+      <PublishOutputFullPath>$([System.IO.Path]::GetFullPath($(WPPAllFilesInSingleFolder)))</PublishOutputFullPath>
     </PropertyGroup>
 
-    <PublishNuGetPackage
-      ManifestFileFullPath="$(MicroserviceRootFolder)"
-      ProjectFileFullPath="$(WebPublishPipeLineProjectFullPath)"
-      IntermediateOutputPath="$(_WPPDefaultIntermediateOutputPath)"
-      ProfileUserFile="$(PublishProfileRootFolder)\$(PublishProfileName).pubxml.user"
-      ApiKey="$(MicroserviceApiKey)"
-      />
-</Target>
+    <GetAllPublishProperties
+          PublishProfilePath="$(WebPublishProfileFile)" >
+      <Output TaskParameter="AllPublishProperties" ItemName="_PublishProperties" />
+    </GetAllPublishProperties>
+
+    <ItemGroup>
+      <PublishPropertiesOverride Include="%(_PublishProperties.Identity)">
+        <Value>$(%(_PublishProperties.Identity))</Value>
+      </PublishPropertiesOverride>
+    </ItemGroup>
+
+    <InvokePowerShell
+                  Condition="Exists('$(PowerShellScriptFile)')"
+                  Script="$(PowerShellScriptFile)"
+                  PublishProfilePath="$(WebPublishProfileFile)"
+                  PackOutput="$(PublishOutputFullPath)"
+                  ProjectPath="$(MSBuildProjectDirectory)"
+                  Password ="$(Password)"
+                  MSDeployPath ="$(MSDeployPath)"
+                  PublishPropertiesOverride ="@(PublishPropertiesOverride)"/>
+  </Target>
   
   <!-- The build process can be extended in a similar way as MS.Common.targets -->
   <PropertyGroup>

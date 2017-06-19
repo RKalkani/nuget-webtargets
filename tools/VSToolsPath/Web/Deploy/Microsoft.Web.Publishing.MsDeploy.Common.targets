@@ -665,8 +665,8 @@ Copyright (C) Microsoft Corporation. All rights reserved.
       <GenerateSampleDeployScriptDestinationRoot></GenerateSampleDeployScriptDestinationRoot>
       <GenerateSampleDeployScriptParameters>@(_MSDeploySampleParametersValue->'%25RootPath%25%(FileName)%(Extension)')</GenerateSampleDeployScriptParameters>
       <_ScriptGenerateSampleDeployScriptReadMeLocation>%25RootPath%25$(GenerateSampleDeployScriptReadMeFileName)</_ScriptGenerateSampleDeployScriptReadMeLocation>
-      <_MSdeployFwdLink>http://go.microsoft.com/?linkid=9278654</_MSdeployFwdLink>
-      <_SampleDeployCmdFwdLink>http://go.microsoft.com/fwlink/?LinkID=183544</_SampleDeployCmdFwdLink>
+      <_MSdeployFwdLink>https://go.microsoft.com/?linkid=9278654</_MSdeployFwdLink>
+      <_SampleDeployCmdFwdLink>https://go.microsoft.com/fwlink/?LinkID=183544</_SampleDeployCmdFwdLink>
     </PropertyGroup>
 
     <ItemGroup>
